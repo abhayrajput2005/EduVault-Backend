@@ -1,0 +1,15 @@
+venv/
+**pycache**/
+*.pyc
+.env
+uploads/
+*.pdf
+*.ppt
+*.pptx
+.DS_Store
+.vscode/
+.env
+venv/
+**pycache**/
+uploads/
+*.pyc
