@@ -13,9 +13,20 @@ from utils.startup import initialize_app_state
 app = Flask(__name__)
 initialize_app_state()
 
+ALLOWED_CORS_ORIGINS = [
+    "https://edu-vault-nine.vercel.app",
+    "http://localhost:5173",
+]
+
 CORS(
     app,
-    resources={r"/api/*": {"origins": os.getenv("CORS_ORIGINS", "*")}},
+    resources={
+        r"/api/*": {
+            "origins": ALLOWED_CORS_ORIGINS,
+            "methods": ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+            "allow_headers": ["Authorization", "Content-Type"],
+        }
+    },
     supports_credentials=True,
 )
 

@@ -17,6 +17,10 @@ type MeResponse = {
   user: AuthUser;
 };
 
+function authPath(action: "login" | "me" | "register") {
+  return ["", "auth", action].join("/");
+}
+
 function parseJwtPayload(token: string): Record<string, unknown> | null {
   try {
     const segment = token.split(".")[1];
@@ -41,7 +45,7 @@ export async function refreshCurrentUser(): Promise<AuthUser | null> {
   if (!isAuthenticated()) return null;
 
   try {
-    const data = await apiFetch<MeResponse>("/auth/me");
+    const data = await apiFetch<MeResponse>(authPath("me"));
     const token = getToken();
     if (token && data.user) {
       setSession(token, data.user);
@@ -53,7 +57,7 @@ export async function refreshCurrentUser(): Promise<AuthUser | null> {
 }
 
 export async function login(email: string, password: string) {
-  const data = await apiFetch<AuthResponse>("/auth/login", {
+  const data = await apiFetch<AuthResponse>(authPath("login"), {
     method: "POST",
     body: JSON.stringify({ email, password }),
   });
@@ -68,7 +72,7 @@ export async function register(payload: {
   password: string;
 }) {
   const name = `${payload.firstName} ${payload.lastName}`.trim();
-  const data = await apiFetch<AuthResponse>("/auth/register", {
+  const data = await apiFetch<AuthResponse>(authPath("register"), {
     method: "POST",
     body: JSON.stringify({ email: payload.email, password: payload.password, name }),
   });
