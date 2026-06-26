@@ -15,6 +15,8 @@ initialize_app_state()
 
 ALLOWED_CORS_ORIGINS = [
     "https://edu-vault-nine.vercel.app",
+    "https://edu-vault-abhayrajput2005s-projects.vercel.app",
+    "https://edu-vault-git-main-abhayrajput2005s-projects.vercel.app",
     "http://localhost:5173",
 ]
 
