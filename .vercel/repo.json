@@ -1,0 +1,11 @@
+{
+  "remoteName": "origin",
+  "projects": [
+    {
+      "id": "prj_lA7xlEEImWjij5IIj9fcPDiCEiI8",
+      "name": "edu-vault",
+      "directory": "frontend",
+      "orgId": "team_sHNgUEmnVYwi71Go1Rh55Hl5"
+    }
+  ]
+}

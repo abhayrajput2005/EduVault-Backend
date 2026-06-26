@@ -4,7 +4,11 @@ if (!configuredApiUrl) {
   throw new Error("VITE_API_URL must be set.");
 }
 
-export const API_URL = configuredApiUrl.replace(/\/$/, "");
+const normalizedApiUrl = configuredApiUrl.replace(/\/$/, "");
+
+export const API_URL = normalizedApiUrl.endsWith("/api")
+  ? normalizedApiUrl
+  : `${normalizedApiUrl}/api`;
 
 export type ApiErrorPayload = {
   message?: string;
