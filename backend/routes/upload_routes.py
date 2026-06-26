@@ -1,16 +1,16 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_from_directory
 from werkzeug.utils import secure_filename
 from models.note_model import notes_collection
+from models.summary_model import summaries_collection
+from models.mcq_model import mcqs_collection
+from models.quiz_model import quiz_collection
+from utils.paths import UPLOAD_FOLDER, resolve_note_filepath, resolve_upload_filepath
+from utils.errors import api_error, handle_exception
 from datetime import datetime
 from bson import ObjectId
 import os
 
 upload = Blueprint("upload", __name__)
-
-UPLOAD_FOLDER = "uploads"
-
-# Create uploads folder automatically
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 
 # =====================================================
@@ -50,7 +50,7 @@ def upload_file():
                 "message": "This note already exists."
             }), 400
 
-        filepath = os.path.join(UPLOAD_FOLDER, filename)
+        filepath = resolve_upload_filepath(filename)
 
         file.save(filepath)
 
@@ -90,15 +90,12 @@ def upload_file():
 
             "mcq_url": f"/dashboard/quiz/{filename}",
 
-            "download_url": f"/uploads/{filename}"
+            "download_url": f"/upload/files/{filename}"
 
         }), 200
 
     except Exception as e:
-
-        return jsonify({
-            "error": str(e)
-        }), 500
+        return handle_exception(e, "Upload failed. Please try again.")
 
 
 # =====================================================
@@ -118,6 +115,7 @@ def get_notes():
         ]):
 
             filename = note.get("filename", "")
+            filepath = resolve_note_filepath(note)
 
             notes.append({
 
@@ -140,17 +138,14 @@ def get_notes():
 
                 "mcq_url": f"/dashboard/quiz/{filename}",
 
-                "download_url": f"/uploads/{filename}"
+                "download_url": f"/upload/files/{filename}"
 
             })
 
         return jsonify(notes), 200
 
     except Exception as e:
-
-        return jsonify({
-            "error": str(e)
-        }), 500
+        return handle_exception(e, "Unable to load notes.")
 
 
 # =====================================================
@@ -172,6 +167,7 @@ def repository():
         ]):
 
             filename = note.get("filename", "")
+            filepath = resolve_note_filepath(note)
 
             repository.append({
 
@@ -190,22 +186,27 @@ def repository():
 
                 "mcq_url": f"/dashboard/quiz/{filename}",
 
-                "download_url": f"/uploads/{filename}",
+                "download_url": f"/upload/files/{filename}",
+
+                "preview_url": f"/upload/files/{filename}?preview=true",
 
                 "file_type": filename.split(".")[-1].upper()
                 if "." in filename else "",
 
-                "file_size": 0
+                "file_size": os.path.getsize(filepath) if os.path.exists(filepath) else 0,
+
+                "has_summary": summaries_collection.count_documents({"filename": filename}) > 0,
+
+                "has_mcqs": mcqs_collection.count_documents({"filename": filename}) > 0,
+
+                "quiz_attempts": quiz_collection.count_documents({"filename": filename})
 
             })
 
         return jsonify(repository), 200
 
     except Exception as e:
-
-        return jsonify({
-            "error": str(e)
-        }), 500
+        return handle_exception(e, "Unable to load repository.")
 
 
 # =====================================================
@@ -250,15 +251,76 @@ def get_note(note_id):
 
             "mcq_url": f"/dashboard/quiz/{filename}",
 
-            "download_url": f"/uploads/{filename}"
+                "download_url": f"/upload/files/{filename}"
 
         }), 200
 
     except Exception as e:
+        return handle_exception(e, "Unable to load note.")
+
+
+# =====================================================
+# DOWNLOAD / PREVIEW FILE
+# =====================================================
+
+@upload.route("/files/<path:filename>", methods=["GET"])
+def download_file(filename):
+
+    safe_name = secure_filename(filename)
+
+    if not safe_name:
+        return jsonify({
+            "message": "Invalid filename"
+        }), 400
+
+    filepath = resolve_upload_filepath(safe_name)
+
+    if not os.path.exists(filepath):
+        return jsonify({
+            "message": "File not found"
+        }), 404
+
+    return send_from_directory(
+        UPLOAD_FOLDER,
+        safe_name,
+        as_attachment=request.args.get("preview") != "true"
+    )
+
+
+# =====================================================
+# DELETE NOTE
+# =====================================================
+
+@upload.route("/note/<note_id>", methods=["DELETE"])
+def delete_note(note_id):
+
+    try:
+
+        note = notes_collection.find_one({
+            "_id": ObjectId(note_id)
+        })
+
+        if not note:
+            return jsonify({
+                "message": "Note not found"
+            }), 404
+
+        filename = note.get("filename", "")
+        filepath = resolve_note_filepath(note)
+
+        notes_collection.delete_one({
+            "_id": ObjectId(note_id)
+        })
+
+        if filepath and os.path.exists(filepath):
+            os.remove(filepath)
 
         return jsonify({
-            "error": str(e)
-        }), 500
+            "message": "Note deleted successfully"
+        }), 200
+
+    except Exception as e:
+        return handle_exception(e, "Unable to delete note.")
 
 
 # =====================================================
@@ -285,7 +347,4 @@ def count_notes():
         }), 200
 
     except Exception as e:
-
-        return jsonify({
-            "error": str(e)
-        }), 500
+        return handle_exception(e, "Unable to count notes.")
